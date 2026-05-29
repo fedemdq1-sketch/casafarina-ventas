@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa Farina — Sistema de Ventas</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #022859; --navy-dark: #011d40; --blue: #056BF0;
+    --light-blue: #B0D0FC; --pink: #B35689; --green: #00916E;
+    --bg: #f5f5f3; --surface: #ffffff; --border: rgba(0,0,0,0.1);
+    --text: #1a1a1a; --text-2: #555; --text-3: #999;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .app-header { background: var(--navy); padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-waves { display: flex; flex-direction: column; gap: 3px; }
+  .logo-wave { height: 2.5px; border-radius: 2px; background: var(--light-blue); }
+  .logo-wave:nth-child(1) { width: 20px; } .logo-wave:nth-child(2) { width: 15px; } .logo-wave:nth-child(3) { width: 10px; }
+  .logo-name { color: #fff; font-size: 15px; font-weight: 600; }
+  .logo-sub { color: var(--light-blue); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .header-right { color: rgba(176,208,252,0.7); font-size: 11px; }
+  .status-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #aaa; margin-right: 5px; vertical-align: middle; }
+  .status-dot.online { background: #4ade80; }
+
+  /* TABS */
+  .tabs { display: flex; background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 48px; z-index: 99; }
+  .tab { flex: 1; padding: 12px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--text-2); border-bottom: 2px solid transparent; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .tab.active { color: var(--navy); border-bottom-color: var(--navy); }
+  .tab .badge { background: var(--pink); color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; font-weight: 600; }
+
+  /* SCREENS */
+  .screen { display: none; max-width: 640px; margin: 0 auto; padding: 16px; }
+  .screen.active { display: block; }
+
+  /* SECTIONS */
+  .section { margin-bottom: 18px; }
+  .section-label { font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+
+  /* SEL BUTTONS (vendedor / pago) */
+  .sel-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .sel-btn { position: relative; padding: 9px 6px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-2); cursor: pointer; font-size: 12px; text-align: center; transition: all 0.12s; }
+  .sel-btn:hover { border-color: var(--navy); color: var(--navy); }
+  .sel-btn.selected { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .sel-btn .tick { display: none; position: absolute; top: 3px; right: 4px; font-size: 9px; }
+  .sel-btn.selected .tick { display: block; }
+
+  /* FIELD */
+  .field { width: 100%; padding: 9px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); height: 36px; }
+  .field:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(2,40,89,0.08); }
+
+  /* QUICK */
+  .quick-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .quick-btn { padding: 5px 12px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text-2); cursor: pointer; font-size: 12px; transition: all 0.1s; white-space: nowrap; }
+  .quick-btn:hover { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+  /* SEARCH */
+  .search-wrap { position: relative; }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--text-3); font-size: 15px; pointer-events: none; }
+  .search-field { width: 100%; padding: 9px 12px 9px 34px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); height: 36px; }
+  .search-field:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(2,40,89,0.08); }
+  .search-drop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); z-index: 200; max-height: 220px; overflow-y: auto; box-shadow: 0 8px 24px rgba(2,40,89,0.12); display: none; }
+  .search-item { padding: 9px 14px; font-size: 13px; cursor: pointer; color: var(--text); border-bottom: 1px solid var(--border); }
+  .search-item:last-child { border-bottom: none; }
+  .search-item:hover { background: #EBF0F8; }
+  .search-item mark { background: var(--light-blue); color: var(--navy); border-radius: 2px; padding: 0 1px; font-weight: 600; font-style: normal; }
+  .search-empty { padding: 14px; font-size: 13px; color: var(--text-3); text-align: center; }
+
+  /* DIVIDER */
+  .divider { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+  .divider span { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* ITEMS TABLE */
+  .col-header { display: grid; grid-template-columns: 80px 1fr 95px 34px; gap: 6px; margin-bottom: 4px; }
+  .col-header span { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .row-item { display: grid; grid-template-columns: 80px 1fr 95px 34px; gap: 6px; align-items: center; margin-bottom: 5px; }
+  .qty-wrap { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; height: 34px; background: var(--surface); }
+  .qty-btn { width: 26px; border: none; background: #f0f0ee; color: var(--text-2); cursor: pointer; font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .qty-btn:hover { background: #e0e0dc; color: var(--navy); }
+  .qty-val { flex: 1; text-align: center; font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .item-inp { width: 100%; padding: 6px 8px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); height: 34px; }
+  .item-inp:focus { outline: none; border-color: var(--navy); }
+  .price-inp { text-align: right; }
+  .btn-remove { width: 34px; height: 34px; border: 1px solid var(--border); border-radius: var(--radius); background: transparent; color: var(--text-3); cursor: pointer; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+  .btn-remove:hover { color: #c0392b; border-color: #c0392b; }
+  .btn-add { width: 100%; padding: 7px; border: 1px dashed var(--border); border-radius: var(--radius); background: transparent; color: var(--text-3); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 6px; }
+  .btn-add:hover { background: #f0f0ee; color: var(--text); }
+
+  /* NOTA */
+  .nota-field { width: 100%; padding: 8px 12px; font-size: 13px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); resize: none; height: 52px; font-family: inherit; }
+  .nota-field:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(2,40,89,0.08); }
+
+  /* TOTAL BAR */
+  .total-bar { background: var(--navy); border-radius: var(--radius-lg); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .total-label { font-size: 10px; color: var(--light-blue); text-transform: uppercase; letter-spacing: 0.1em; }
+  .total-amount { font-size: 26px; font-weight: 600; color: #fff; margin-top: 2px; }
+  .total-pago { font-size: 12px; color: rgba(176,208,252,0.8); text-align: right; }
+
+  /* SEND BUTTON */
+  .btn-send { width: 100%; padding: 12px; background: var(--blue); color: #fff; border: none; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-send:hover { background: #0459c5; }
+  .btn-send:active { transform: scale(0.99); }
+
+  /* CAJA TABS */
+  .caja-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+  .caja-tab { flex: 1; padding: 9px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--text-2); border-bottom: 2px solid transparent; }
+  .caja-tab.active { color: var(--navy); border-bottom-color: var(--blue); }
+
+  /* PEDIDO CARDS */
+  .pedido-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; margin-bottom: 10px; }
+  .pedido-card.nuevo { border-left: 3px solid var(--navy); animation: slidein 0.3s ease; }
+  @keyframes slidein { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+  .pedido-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px; }
+  .pedido-meta { display: flex; flex-direction: column; gap: 2px; }
+  .pedido-cliente { font-size: 16px; font-weight: 600; color: var(--text); }
+  .pedido-num { font-size: 11px; color: var(--text-3); }
+  .pedido-vend { font-size: 11px; color: var(--text-3); }
+  .pago-tag { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .pago-tag.efectivo { background: #EAF3DE; color: #3B6D11; }
+  .pago-tag.debito { background: #E6F1FB; color: #185FA5; }
+  .pago-tag.credito { background: #FAEEDA; color: #854F0B; }
+  .pago-tag.transferencia { background: #F1EFE8; color: #5F5E5A; }
+  .pedido-items { margin-bottom: 10px; }
+  .item-row { display: flex; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--border); gap: 8px; font-size: 13px; color: var(--text-2); }
+  .item-row:last-child { border-bottom: none; }
+  .item-qty { font-size: 11px; background: #f0f0ee; color: var(--text-3); border-radius: 4px; padding: 1px 7px; flex-shrink: 0; font-weight: 600; }
+  .item-desc { flex: 1; }
+  .item-price { white-space: nowrap; font-weight: 500; color: var(--text); }
+  .hist .item-row { font-size: 14px; }
+  .hist .pago-tag { font-size: 12px; }
+  .pedido-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border); }
+  .pedido-total { font-size: 20px; font-weight: 700; color: var(--navy); }
+  .btn-cobrado { padding: 7px 18px; background: var(--green); color: #fff; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-cobrado:hover { background: #007a5c; }
+  .cobrado-tag { font-size: 12px; padding: 4px 12px; border-radius: 20px; background: #EAF3DE; color: #3B6D11; font-weight: 600; }
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--text-3); font-size: 14px; }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 22px; border-radius: 30px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; box-shadow: 0 4px 20px rgba(2,40,89,0.3); }
+  .toast.show { opacity: 1; }
+
+  /* LOADING */
+  .loading { text-align: center; padding: 60px 20px; color: var(--text-3); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="logo">
+    <div class="logo-waves">
+      <div class="logo-wave"></div>
+      <div class="logo-wave"></div>
+      <div class="logo-wave"></div>
+    </div>
+    <div>
+      <div class="logo-name">Casa Farina</div>
+      <div class="logo-sub">Sistema de ventas</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="status-dot" id="status-dot"></span>
+    <span id="status-text">Conectando...</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('mostrador')" id="tab-mostrador">
+    🛒 Mostrador
+  </button>
+  <button class="tab" onclick="switchTab('caja')" id="tab-caja">
+    🏧 Caja
+    <span class="badge" id="badge-caja" style="display:none">0</span>
+  </button>
+</div>
+
+<!-- MOSTRADOR -->
+<div class="screen active" id="screen-mostrador">
+
+  <div class="section">
+    <p class="section-label">Vendedor</p>
+    <div class="sel-grid" id="vendedor-grid"></div>
+  </div>
+
+  <div class="section">
+    <p class="section-label">Cliente</p>
+    <input class="field" id="cliente-input" type="text" placeholder="Nombre del cliente (opcional)..." autocomplete="off" />
+  </div>
+
+  <div class="section">
+    <p class="section-label">Carga rápida</p>
+    <div class="quick-wrap" id="quick-grid"></div>
+  </div>
+
+  <div class="section">
+    <p class="section-label">Buscar en catálogo</p>
+    <div class="search-wrap" id="search-wrap">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input class="search-field" id="search-input" type="text" placeholder="Escribí para buscar..." autocomplete="off" />
+      <div class="search-drop" id="search-drop"></div>
+    </div>
+  </div>
+
+  <div class="divider"><span>o agregá manualmente</span></div>
+
+  <div class="section">
+    <div class="col-header">
+      <span style="text-align:center">Cant.</span>
+      <span>Descripción</span>
+      <span style="text-align:right">Precio c/u</span>
+      <span></span>
+    </div>
+    <div id="items-container"></div>
+    <button class="btn-add" onclick="addItem()">＋ Agregar producto</button>
+  </div>
+
+  <div class="section">
+    <p class="section-label">Forma de pago</p>
+    <div class="sel-grid" id="pago-grid"></div>
+  </div>
+
+  <div class="section">
+    <p class="section-label">Nota (opcional)</p>
+    <textarea class="nota-field" id="nota-input" placeholder="Observaciones para caja..."></textarea>
+  </div>
+
+  <div class="total-bar">
+    <div>
+      <p class="total-label">Total</p>
+      <p class="total-amount" id="total-display">$0</p>
+    </div>
+    <div>
+      <p class="total-pago" id="pago-display">Sin forma de pago</p>
+    </div>
+  </div>
+
+  <button class="btn-send" onclick="enviarACaja()">
+    ↗ Enviar a caja
+  </button>
+  <div style="height:20px"></div>
+</div>
+
+<!-- CAJA -->
+<div class="screen" id="screen-caja">
+  <div class="caja-tabs">
+    <button class="caja-tab active" onclick="switchCajaTab('pendientes')" id="ctab-pendientes">Pendientes</button>
+    <button class="caja-tab" onclick="switchCajaTab('historial')" id="ctab-historial">Historial</button>
+  </div>
+  <div id="caja-pendientes"></div>
+  <div id="caja-historial" style="display:none"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, update, query, orderByChild, limitToLast }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD5oo8CoXemEdFpCLEjvytQoeKGakj6wjY",
+  authDomain: "mostrador-caja-cf.firebaseapp.com",
+  databaseURL: "https://mostrador-caja-cf-default-rtdb.firebaseio.com",
+  projectId: "mostrador-caja-cf",
+  storageBucket: "mostrador-caja-cf.firebasestorage.app",
+  messagingSenderId: "1002701666930",
+  appId: "1:1002701666930:web:3016b17a4d117dee80e0eb"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── Estado de conexión ──────────────────────────────────────────
+import { getDatabase as gdb, ref as dbref, onValue as ov } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const connRef = ref(db, '.info/connected');
+onValue(connRef, snap => {
+  const ok = snap.val();
+  document.getElementById('status-dot').className = 'status-dot' + (ok ? ' online' : '');
+  document.getElementById('status-text').textContent = ok ? 'En línea' : 'Sin conexión';
+});
+
+// ── Escuchar pedidos en tiempo real ────────────────────────────
+const pedidosRef = ref(db, 'pedidos');
+const pedidosQuery = query(pedidosRef, orderByChild('timestamp'), limitToLast(200));
+
+onValue(pedidosQuery, snap => {
+  const data = snap.val() || {};
+  const todos = Object.entries(data).map(([key, val]) => ({ fbKey: key, ...val }));
+  todos.sort((a, b) => b.timestamp - a.timestamp);
+  const pendientes = todos.filter(p => p.estado === 'pendiente');
+  const hist       = todos.filter(p => p.estado === 'cobrado');
+  renderPendientes(pendientes);
+  renderHistorial(hist);
+  updateBadge(pendientes.length);
+});
+
+// ── Enviar pedido ──────────────────────────────────────────────
+window.enviarACajaFB = async function() {
+  const valid = window._items.filter(it => it.desc.trim() !== '' || it.precio !== '');
+  if (!window._vendedor)   { showToast('Seleccioná el vendedor'); return; }
+  if (!valid.length)        { showToast('Agregá al menos un producto'); return; }
+  if (!window._pago)        { showToast('Seleccioná la forma de pago'); return; }
+
+  const cliente = document.getElementById('cliente-input').value.trim();
+  const nota    = document.getElementById('nota-input').value.trim();
+  const total   = valid.reduce((s, it) => s + (parseFloat(it.precio)||0) * (it.qty||1), 0);
+
+  await push(pedidosRef, {
+    timestamp: Date.now(),
+    hora: new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+    items: valid,
+    pago: window._pago,
+    vendedor: window._vendedor,
+    cliente: cliente || null,
+    total,
+    nota: nota || null,
+    estado: 'pendiente'
+  });
+
+  window._items = []; window._vendedor = null; window._pago = null;
+  document.querySelectorAll('.vendedor-btn-ref, .pago-btn-ref').forEach(b => b.classList.remove('selected'));
+  document.getElementById('pago-display').textContent = 'Sin forma de pago';
+  document.getElementById('nota-input').value = '';
+  document.getElementById('cliente-input').value = '';
+  renderItems();
+  showToast('✓ Pedido enviado a caja');
+};
+
+// ── Marcar cobrado ─────────────────────────────────────────────
+window.cobrarFB = async function(fbKey, id) {
+  const hora = new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+  await update(ref(db, 'pedidos/' + fbKey), { estado: 'cobrado', cobradoEn: hora });
+  showToast('Pedido #' + id + ' cobrado');
+};
+
+// ── Render pendientes ──────────────────────────────────────────
+function renderPendientes(list) {
+  const c = document.getElementById('caja-pendientes');
+  if (!list.length) {
+    c.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div>Sin pedidos pendientes</div>';
+    return;
+  }
+  c.innerHTML = list.map((p, i) => buildCard(p, true, i === 0)).join('');
+}
+
+function renderHistorial(list) {
+  const c = document.getElementById('caja-historial');
+  if (!list.length) {
+    c.innerHTML = '<div class="empty-state"><div class="empty-icon">🕐</div>Sin órdenes cobradas todavía</div>';
+    return;
+  }
+  c.innerHTML = list.map(p => buildCard(p, false, false)).join('');
+}
+
+function buildCard(p, pendiente, esNuevo) {
+  const pClass = p.pago === 'Efectivo' ? 'efectivo' : p.pago === 'Débito' ? 'debito' : p.pago === 'Crédito' ? 'credito' : 'transferencia';
+  const hora = pendiente ? p.hora : (p.hora + ' → cobrado ' + p.cobradoEn);
+  const num  = p.timestamp ? ('#' + String(p.timestamp).slice(-4)) : '';
+  const cli  = p.cliente ? `<span class="pedido-cliente">${p.cliente}</span>` : '';
+  const nota = p.nota ? `<p style="font-size:12px;color:#888;font-style:italic;margin-bottom:8px">${p.nota}</p>` : '';
+  const items = (p.items || []).map(it => {
+    const q  = it.qty || 1;
+    const pr = parseFloat(it.precio) || 0;
+    return `<div class="item-row">
+      <span class="item-qty">${q}x</span>
+      <span class="item-desc">${it.desc || '—'}</span>
+      <span class="item-price">${pr ? '$' + (pr * q).toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2}) : '—'}</span>
+    </div>`;
+  }).join('');
+  const accion = pendiente
+    ? `<button class="btn-cobrado" onclick="cobrarFB('${p.fbKey}', '${num}')">✓ Cobrado</button>`
+    : `<span class="cobrado-tag">✓ Cobrado</span>`;
+  return `<div class="pedido-card${pendiente && esNuevo ? ' nuevo' : ''}${!pendiente ? ' hist' : ''}">
+    <div class="pedido-header">
+      <div class="pedido-meta">
+        ${cli}
+        <span class="pedido-num">Pedido ${num} · ${hora}</span>
+        <span class="pedido-vend">Vendedor: ${p.vendedor}</span>
+      </div>
+      <span class="pago-tag ${pClass}">${p.pago}</span>
+    </div>
+    <div class="pedido-items">${items}</div>
+    ${nota}
+    <div class="pedido-footer">
+      <span class="pedido-total">$${p.total.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2})}</span>
+      ${accion}
+    </div>
+  </div>`;
+}
+
+</script>
+
+<script>
+// ── Estado local (mostrador) ───────────────────────────────────
+window._items    = [];
+window._vendedor = null;
+window._pago     = null;
+
+const VENDEDORES = ['David', 'Federico', 'Jose Luis', 'Mariela'];
+const PAGOS      = ['Efectivo', 'Débito', 'Crédito', 'Transferencia'];
+const RAPIDOS    = ['Cloro granulado 60% x 1 Kg','Cloro granulado 90% x 1 Kg','Pastillas triple acción x 1 kg','Alguicida Nataclor x 1 lt','Clarificador Nataclor x 1 lt','Gel clarificador Nataclor','Gel Clarificador Mak','Natabio x 1 lt','Natabio x 2 lts'];
+const CATALOGO   = ["COCODRILO PARA EL AGUA","NIYA SONAR 30","NIYA SONAR 50","COBERTOR INTEX EASY SET REDONDA 366","PILETA INTEX 260X160X65","ESCALERA PILETA INTEX 107CM","TEST ANALIZADOR DE IONES COBRE","CARGA FILTRANTE ORIGINAL VC 200","TE SOLD 40MM","COLECTOR SALIDA LATERAL PEGAR 50","BAP 125","BOMBA BAP 100 - 3","TE SOLD 50MM","ZUIPY 02 LIMPIAFONDO INALAMBRICO","ZUIPY 200","ZUIPY 300","FUENTE 200W","LUMINARIA LED SUBACUATICA P ADOSAR BLANCO FRIO","LUMINARIA LED SUBACUATICA P ADOSAR RGB","TERMO ADVENTURE 1.3 TERRACOTA","TERMINAL 1 1/4","TOMA DE FONDO FV","DIFUSOR VC 30","DIFUSOR VC 20","METRO DE MANGUERA 2 PULGADAS","MANGUERA PLANA PVC 7.5M","MANGUERA PLANA PVC 15M","MANGUERA PLANA PVC 30M","BOTELLA TERMICA 900ML COLUMBUS","RESINA CATIONICA PARA ABLANDADOR 25L","ABLANDADOR DE AGUA 1044 CON SALERO","VALVULA RETENCION 50 PEGAR","VALVULA ESFERA SOLD 40MM","VALVULA ESFERA SOLD 50MM","VALVULA ESF SOLD C UNIAO 40MM","VALVULA ESF SOLD C UNIAO 50MM","HURON SALT","CLIP P/MANGUITO","CEPILLO 35 REPUESTO","PERNO VULCANO","O RING TAPA INTERMEDIA","EB Z6T","ROTOR NORYL MV6V 1 1/2","TUBO PVC SOLD KRONA K16 3M 40MM JP","TUBO PVC SOLD KRONA K16 3M 50MM JP","ARO VISTA BLANCO","REGULADOR SKIMMER BA","CANASTO TRAMPA DE PELOS","O'RING UNION DOBLE","EB 50-32-200-1","EB 65 40 200 1 220 / 380V","EB 65-50-125-1","CONTROLADOR RGB MEDUS","CLORO DISOLUCION INSTANTANEA GRANULADO","SALVAVIDAS TORTUGA 74X66 BESTWAY","MOTOR DIAGNOSTIC","MACHON 2 PULGADAS CEPEX","MACHON 1 1/2 PULGADAS CEPEX","CODO 90 ENCOLAR ERA","TERMINAL ROSCA MACHO 50 1 1/2","TUBERIA PVC PN10 D50X2.4X5MTS ERA","VALVULA ESFERICA ERA 50","ESCALERA LUXE 3 ESCALONES INOX","ESCALERA LUXE 4 ESCALONES","ESCALERA LUXE AC INOX 4 ESCALONES","BOYA SATELITE NATACLOR","TEE ENCOLAR D50","TOBERA VAN 12 RAIN BIRD","CARRO PORTABOMBA Y FILTRO VEICO","BOMBA CALOR NATACLOR INVERPAD TURBO MPA 090","COLLARIN 50","ACTIVE BRUSH BUSHING S300","MANGUITO 50 CEPEX","ENLACE TRES PIEZAS 50-40","CASQUILLO 50-40 CEPEX","CODO 90 50 CEPEX","BOMBA NATACLOR N 035 3/4 HP","ROBOT DOLPHIN LIBERTY 600","NIYA TRACKER 15","NIYA TRACKER 25","NIYA TRACKER 35","NIYA TRACKER 55","TAMBOR PASTILLAS 25 KG","TAMBOR LENTO 25 KG","TAMBOR INSTANTANEO 25 KG","MOTOR 4 S4-XD 2A 1 HP M","MOTOR 4 S4-XD 2A 1.5HP M","MOTOR 4 S4-XS 1 HP T","CINTA TEST","FLOTADOR 4 EN 1 ADVANCED","DESHUMIDIFICADOR DH50 POOL INVERTER","BOMBA DE CALOR POOL INVERTER 30 ECO","BOMBA DE CALOR POOL INVERTER 60","BAMBOO SM - DISPOSITIVO P REDUCCION DE CLORO","BAMBOO BM - DISPOSITIVO P REDUCCION DE CLORO","CARTUCHO CARBON ACTIVADO","TABLA BARRENADOR RECKO","DISCO IMPUL EB 32-25-200","DISCO IMPUL EB 50-32-200","DISCO IMPUL EB 65-50-125","BOYA MARGARITA CLOROTEC","LIMPIAFONDOS JUMBO","ANTIPARRAS EN BLISTER","CHALECO INFLABLE INTEX 58673","DELFIN FLOTADOR 201X76","BALLENA FLOTADOR 193X119","BRACITOS SPIDERMAN 23X15 BESTWAY","SALVAVIDAS ANIMALES BESTWAY 36351","SALVAVIDAS NEON 91 CM BESTWAY","COLCHONETA INFLABLE 213X86 BESTWAY","PILETA BARCO PIRATA 191X140X97","PILETA RECTANGULAR 165X104X25 BESTWAY","CHALECO SALVAVIDAS 51X46 BESTWAY","TIBURON INFLABLE GRANDE BESTWAY","COLCHONETA PLATEADA 188X71 BESTWAY","COLCHONETA CLASICA 183X69 BESTWAY","MASCARA BUCEO CLASICA BESTWAY","CLARIFICADOR PLUS CLOROTEC","ALGUICIDA CHOQUE CLOROTEC","CONTROLADOR DE METALES","BOYA SATELITE CLOROTEC","CODO 45 SOLD 40MM","CODO 45 SOLD 50MM","CODO 90 SOLD 40MM","CODO 90 SOLD 50MM","CUPLA SOLD 40MM","CUPLA SOLD 50MM","POLIFOSFATO 1 KG","BOMBA DE CALOR TOP 9","BOMBA DE CALOR TOP 14","BOMBA DE CALOR TOP 19","CLORADOR SALINO BZ20","CLORADOR SALINO BZ30","CLORADOR SALINO BZ35","CLORADOR SALINO BZ40","FILTRO VEICO ASTRAL V70","FILTRO VEICO ASTRAL V60","FILTRO VEICO ASTRAL V50","FILTRO VEICO ASTRAL V30","RETORNO ASTRAL","VIROLA ASTRAL","HIDROJET ASTRAL","SKIMMER ASTRAL POOL","ESFERICA 40","ESFERICA 50","ESFERICA 63","CODO 90 40","CODO 90 50","CODO 90 63","CODO 45 40","CODO 45 50","CODO 45 63","TEE 90 40","TEE 90 50","TEE 90 63","UNION DOBLE 40","UNION DOBLE 50","UNION DOBLE 63","VALVULA RETENCION A BOLA 40","VALVULA RETENCION A BOLA 50","COLECTOR","ADHESIVO CON PINCEL 250","ADHESIVO CON PINCEL 500","PEGAMENTO CEPEX","CUPLA 50 CEPEX","REDUCCION 50 - 40 CEPEX","TERMO COLEMAN 700 ROJO","TERMO COLEMAN 700 VERDE","TERMO COLEMAN 700 NEGRO","TERMO COLEMAN 700 BLANCO","TERMO COLEMAN 1.2 ROJO","TERMO COLEMAN 1.2 VERDE","TERMO COLEMAN 1.2 NEGRO","TERMO COLEMAN 1.2 BLANCO","CONTROLADORA RGB 2 AMP","CONTROLADORA RGB 3 AMP","CONTROLADORA RGB 5 AMP","OPTICA LED SMD BLANCA","OPTICA LED SMD RGB","OPTICA PLASTICA CON ARO RGB","OPTICA PLASTICA RGB","OPTICA PLASTICA BLANCA","OPTICA MINI BLANCA","OPTICA MINI RGB","OPTICA DELUXE BLANCA","ROBOT DOLPHIN S50","ROBOT DOLPHIN S100","ROBOT DOLPHIN S200","ROBOT DOLPHIN S300I","ROBOT DOLPHIN S400","ROBOT DOLPHIN M600","ROBOT DOLPHIN M700","ROBOT DOLPHIN LIBERTY 200","ROBOT DOLPHIN LIBERTY 300","ROBOT DOLPHIN POOL UP","CANASTO DOLPHIN","ROBOT DOLPHIN LIBERTY 400","ROBOT DOLPHIN PROX 2","ROBOT DOLPHIN WAVE 90","BOLSA FILTRANTE DOLPHIN","CARTUCHO FINO DOLPHIN","DOSIFICADOR DE CLORO","CLORO LIQUIDO 5 LTS","CLORO LIQUIDO 10 LTS","ACIDO 5 LTS","ACIDO 25 LTS","SULFATO DE COBRE 1/2 KG","CARTUCHO FILTRO A","CARTUCHO FILTRO H","PARCHE STICKER","PARCHE TRADICIONAL","MANGUERA REPUESTO","ARCO INTEX","FILTRO INTEX","FILTRO INTEX A","IONIZADOR","COBRE REPUESTO","BOYA KUSHIRO","MANGUERA KUSHIRO 15M","SACAHOJAS PEARL","BOMBA KUSHIRO 12V","IONIZADOR KUSHIRO","MAK KILLER 1L","MAK POWER ION 1L","BOYA MAK","GEL CLARIFICADOR MAK","MAK POWER FLOC 1L","MAK PASTILLAS","MAK MINI","MAK BIO","MAK ULTRA 1L","OXI POWER MAK","BOYA FARO MAK","MAK LIMPIA PAREDES","SACAHOJAS MAVI","MANGO LIMPIAFONDOS REPUESTO","CANASTO SKIMMER REPUESTO","LIMPIAFONDOS MEDIALUNA MAVI","RETORNO MAVI 1 1/2","MOTOR MEC 0.75 HP 1450 RPM","MOTOR MEC 0.5 HP 905 RPM","MOTOR MEC 1 HP 910 RPM","MOTOR MEC 1.5 HP 2710 RPM","MOTOR MEC 2 HP 940 RPM","MOTOR MEC 3 HP 1410 RPM","FILTRO MP 50","FILTRO MP 40","FILTRO MP 30","BARRAL TELESCOPICO MEDUS","BARRAL TELESCOPICO MEDUS 4.80","CASCADA COBRA MEDUS","OPTICA CHICA ADOSAR ACERO INOX RGB 9W","OPTICA CHICA ADOSAR ACERO INOX BLANCA 9W","OPTICA GRANDE ACERO INOX BLANCA 18W","OPTICA GRANDE ACERO INOX RGB 18W","OPTICA MINI ACERO INOX RGB","OPTICA MINI ACERO INOX BLANCA","OPTICA MINI PLASTICA RGB","OPTICA MINI PLASTICA BLANCA","CLORO GRANULADO 1KG INSTANTANEO","CAPSULA PASTILLAS 1KG","ALGUICIDA 1L NATACLOR","ALGUICIDA 5L NATACLOR","ALGUICIDA 30L NATACLOR","CLARIFICADOR 1L NATACLOR","CLARIFICADOR 5L NATACLOR","CLARIFICADOR 30L NATACLOR","GEL CLARIFICADOR NATACLOR","NATABIO 1L NATACLOR","NATABIO 2L NATACLOR","PH + 2.5 KG NATACLOR","PH - 2.5 KG NATACLOR","KIT PILETA DE LONA","OXY POOL","POTE PASTILLAS 1 KG","POTE CLORO GRANULADO 1 KG 60%","POTE CLORO GRANULADO 1 KG 90%","CLORO GRANULADO 5 KG 90%","CLORO GRANULADO 5 KG 60%","PASTILLAS 5 KG NATACLOR","CLORO GRANULADO 10 KG 90%","CLORO GRANULADO 10 KG 60%","PASTILLAS 10 KG NATACLOR","CLORO GRANULADO 20 KG 90%","CLORO GRANULADO 20 KG 60%","PASTILLAS 20 KG NATACLOR","TAMBOR 50 KG CLORO GRANULADO","TAMBOR 50KG PASTILLAS NATACLOR","INSTANTANEO MULTIACCION 1 KG","INSTANTANEO MULTIACCION 5 KG","INSTANTANEO MULTIACCION 10 KG","INSTANTANEO MULTIACCION 20 KG","TERMOMETRO ECONOMICO BLANCO","TERMOMETRO ANIMAL","TEST KIT NATACLOR","BOYA NATACLOR BASICA","BOYA RECARGABLE NATACLOR","BOYA NATACLOR PEZ","BOYA NATACLOR CISNE","CEPILLO RINCON NATACLOR","BOLSA DE GRAVA CLASIFICADA","BOLSA DE ARENA DE SILICE","BOMBA DE CALOR EPN 07","BOMBA DE CALOR EPN 09","BOMBA DE CALOR EPN 13","BOMBA DE CALOR EPN 20","BOMBA DE CALOR EPN 24","BOMBA DE CALOR MS 130","SWIM 035","SWIM 075","CLORO GRANULADO 1KG LENTO","RETORNO SLIM FLUIDRA","SACAHOJAS CABO ALUMINIO","BOYA NATACLOR MINI","BOLSA SAL 25 KG","OXY POOL 10 KG","OXY POOL 5 KG","FUNGICIDA NATACLOR","MULTIVALVULA NIORD","TURBINA MINI NIORD","LIMPIAFONDOS MINI NIORD","BOMBA MINI 15 NIORD","BOMBA MINI 30 NIORD","TEE 50 PLIMEX","ESFERICA 50 PLIMAT","CODO 90 PLIMAT","MANGUITO 40 PLIMAT","TEE 40 PLIMAT","UNION DOBLE 50 PLIMAT","VALVULA RETENCION 50 PLIMEX","VALVULA RETENCION 63 PLIMEX","ESFERICA 63 PLIMEX","TOBERA VAN 10 RAIN BIRD","TOBERA VAN 15 RAIN BIRD","TOBERA VAN 18 RAIN BIRD","SOLENOIDE RAIN BIRD","SOLENOIDE PRO RAIN BIRD","ASPERSOR 3504 RAIN BIRD","ASPERSOR 5004 RAIN BIRD","PROGRAMADOR 4 ZONAS ESPTM2","PROGRAMADOR 6 ZONAS ESPTM2","PROGRAMADOR 8 ZONAS ESPTM2","PROGRAMADOR GOTEO RAIN BIRD","SENSOR DE LLUVIA RAIN BIRD","BOQUILLA VAN 15","BOQUILLA VAN 18","TANGO 9","TANGO 14","TANGO 20","TANGO PRESS 20","TANGO PRESS 24","INTELLIGENT 24","MAX PRESS 26","MAX PRESS 30VF","MAX PRESS 40 VF","MINI RW9","DRAIN Q 400 F","INTELLIGENT 20","MAX PRESS 200 E ROWA","TANGO 24","BOMBA ROWA DRAIN T18/6","MAX SFL 26","BOMBA MAX PRESS 26 E","ECOPRESS ROTOR PUMP","VALVULA DE RETENCION 1 PULGADA","VALVULA DE RETENCION 1 1/4 PUL","VALVULA DE RETENCION 1 1/2 PUL","VALVULA DE RETENCION 2 PULGADA","FILTRO MALLA 1 PULGADA","FILTRO MALLA 1 1/2 PULGADA","FILTRO MALLA 2 PULGADAS","TANQUE ROTOR 200L","BLOWER SOPLADOR","PULSADOR AIRCON BCO","MATE STANLEY ROJO","MATE STANLEY VERDE","MATE STANLEY NEGRO","MATE STANLEY NIGHTFALL","MATE STANLEY MAPLE","MATE STANLEY ROSA","TERMO STANLEY 946 ROJO","TERMO STANLEY 946 NEGRO","TERMO STANLEY 946 VERDE","TERMO STANLEY 946 ROSA","TERMO STANLEY 1.4 LAKE","TERMO STANLEY 1.4 VERDE","TERMO STANLEY 1.4 NEGRO","TERMO STANLEY 1.4 ROJO","TERMO STANLEY 1.4 ROSA","TERMO ADVENTURE 1L VERDE","TERMO ADVENTURE 1L BLANCO","TERMO STANLEY 591 NEGRO","TERMO STANLEY 591 VERDE","QUENCHER STANLEY 1.18 LTS ROSA","MATE SYSTEM STANLEY VERDE 800","MATE SYSTEM STANLEY MAPLE 800","MATE SYSTEM STANLEY NEGRO 800","VASO ONE HAND NEGRO","FLIP STRAW 887 ROSE QUARTZ","FLIP STRAW PLUM 887","SWIM 025","SWIM 150","TEST KIT TECNOCLOR","BOYA SATELITE TECNOCLOR","BOYA TECNOCLOR LARGA","TEMPORIZADOR MECANICO ENCHUFABLE","MANTA TERMICA CELESTE","MANTA TERMICA NEGRA","HIDROESFERA 24L","TANQUE 50L","TANQUE 100L","TANQUE 200L","REPARACION ELECTROBOMBA","REPARACION ROBOT","FILTRO VEICO V-20","FILTRO VC 10","FILTRO VC 20","FILTRO VC 30","FILTRO VC 50","FILTRO VC 100","FILTRO VC 200","FILTRO VC 250","BOMBA BAS 033","BOMBA BAE 033","BOMBA BAP 033","BOMBA BAS 050","BOMBA BAE 050","BOMBA BAP 050 AL","BOMBA BAE 075","BOMBA BAP 075","BOMBA BAT 075","BOMBA BAE 100","BOMBA BAP 100","BOMBA BAT 100","BOMBA BAE 125","BOMBA BAC 150","BOMBA BAC 200","BOMBA BAC 300","BOMBA HIDROMASAJE 075","BOMBA HIDROMASAJE 100","BOMBA HIDROMASAJE 125","LIMPIAFONDOS MEDIALUNA","LIMPIAFONDOS RUEDAS","LIMPIAFONDOS TRIANGULAR","LIMPIAFONDOS OVAL","LIMPIAFONDOS ALUMINIO 35","LIMPIAFONDOS ALUMINIO 48","LIMPIAFONDOS VENTURI","CEPILLO 46","CEPILLO 29","ESPONJA MAGICA","TERMINAL MANGUERA","SKIMMER BOCA ANCHA HORMIGON","SKIMMER BOCA CHICA HORMIGON","SKIMMER BOCA ANCHA FIBRA","SKIMMER BOCA CHICA FIBRA","CAMARA DE FONDO","VIROLA HORMIGON","RETORNO HORMIGON","VIROLA FIBRA","RETORNO FIBRA","TRAMPA DE PELOS","DOSIFICADOR","REBOSADERO FIBRA","CANASTO SKIMMER","TAPA INTERMEDIA SKIMMER","MARCO VISTA SKIMMER","TAPA REJILLA SKIMMER","TAPA CAMARA DE FONDO","BARRAL 2.40 MTS","BARRAL 3.60 MTS","BARRAL 4.80 MTS","BOYA VULCANO","BOYA CON TERMOMETRO","SACAHOJAS PLANO 19MM","SACAHOJAS PLANO 32MM","SACAHOJAS BOLSA CHICA 19MM","SACAHOJAS BOLSA GRANDE","SACAHOJAS PLANO CON PALA 19MM","ESCALERA 2 PELDANOS PLASTICO","ESCALERA 3 PELDANOS PLASTICO","ESCALERA 4 PELDANOS PLASTICO","ESCALERA 2 PELDANOS ACERO INOX","ESCALERA 3 PELDANOS ACERO INOX","ESCALERA 4 PELDANOS ACERO INOX","BARANDA 1.20 MTS","BARANDA 2.40 MTS","BARANDA 3 MTS","CASCADA 30 CM","CASCADA 40 CM","CASCADA 50 CM","CASCADA 80 CM","CASCADA 1.20 M","CASCADA 2 M","PICO DE PATO ACERO INOXIDABLE","CASCADA ACERO INOXIDABLE","CARRITO PORTABOMBA","BOMBA DE CALOR POOL 25","BOMBA DE CALOR POOL 50","BOMBA DE CALOR POOL 75","BOMBA DE CALOR POOL 110","OPTICA LUMIPOOL BLANCA","OPTICA LUMIPOOL RGB","OPTICA SUPER LED RGB","OPTICA SUPER LED BLANCA","FUENTE LED FA 150W","CONTROLADORA LUMIPOOL","PASAMURO TRADICIONAL","PASAMURO FIBRA DE VIDRIO","CAJA DE CONEXIONES","MULTIVALVULA 6 VIAS CON UNION","MULTIVALVULA 6 VIAS SIN UNION","KIT DE UNIONES","CUERPO SUPERIOR VC 200","MULTIVALVULA 2 VIAS","MULTIVALVULA 3 VIAS","TAPA VISOR VC 200","VASO VISOR","CLAMP DE CIERRE","LLAVE PURGA VC 200","UNION TANQUE","MANOMETRO","TAPA VISOR BAE","CANASTO BAE","IMPULSOR 075","CUERPO BOMBA BAC","DIFUSOR BAE","TAPA VISOR BAP","DIFUSOR BAC","CUERPO BOMBA BAS","IMPULSOR 200","TAPA VISOR BAT","CANASTO BAT","AJUSTE BARRAL","REGULADOR SKIMMER FIBRA","REGULADOR SKIMMER HORMIGON BA","METRO DE MANGUERA 1 1/2","HIDROJET FIBRA DE VIDRIO","FUENTE 100W VULCANO","METRO DE MANGUERA 1 1/4","JUEGO DE REACTIVOS","IMPULSOR 050","CUERPO BOMBA BAP","SELLO MECANICO VULCANO","CARGA FILTRANTE ORIGINAL VC50","CARGA FILTRANTE ORIGINAL VC100","DIFUSOR VC100","DIFUSOR VC200","FUENTE 30W","FUENTE 40W","FUENTE 60W","PH - BOLSA 25 KG","MULTIVALVULA 6 VIAS 2 PULGADAS","CARGA FILTRANTE ORIGINAL VC30","ELECTRODO COBRE VULCANO","BOMBA BAP 050","CANASTO BAP","DIFUSOR VC50","TAPA VISOR BAC","CUERPO BOMBA BAT","IMPULSOR 100","IMPULSOR 125","IMPULSOR 150","IMPULSOR 300","MOTOR WEG 1.5 HP 2800 RPM","MOTOR WEG 1.5 HP 1400 RPM","MOTOR WEG 0.5 HP 1400 RPM","HI MULTI 5-45 IPQ","PB 201 EA","PB 250 SA","PB 125 EA","HI PERI 1.4","PE 350 EA","TOP RL 30 / 7.5","STAR RS 25 / 6","PAR 60 T","PAB 40-200 7.5-180","PAB 50-125 3.5-136","PAB 32-200 5.5-199","PAB 32 - 125 1.5","PAB 50 - 160 5.5","TANQUE WILO 100L V","TANQUE WILO 200L V","PAR 50 T","PAR 40 T","PAR 40 M","PAR 20","PAR 10","HBO 70/15","PB 125 FL","PRESOSTATO","SENSOR AGUJA","PLAQUETA HBO","HIDRONEUMATICO","TOP S 30/10 M","TEJO FIBRO EN RED RECKO","TEJO MADERA CHICO CON GANCHO RECKO"];
+
+// Render vendedores
+(function() {
+  const g = document.getElementById('vendedor-grid');
+  VENDEDORES.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'sel-btn vendedor-btn-ref'; b.id = 'vend-' + v;
+    b.innerHTML = '<span class="tick">✓</span>' + v;
+    b.onclick = () => { window._vendedor = v; document.querySelectorAll('.vendedor-btn-ref').forEach(x => x.classList.remove('selected')); b.classList.add('selected'); };
+    g.appendChild(b);
+  });
+})();
+
+// Render pagos
+(function() {
+  const g = document.getElementById('pago-grid');
+  PAGOS.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'sel-btn pago-btn-ref'; b.id = 'pago-' + p;
+    b.innerHTML = '<span class="tick">✓</span>' + p;
+    b.onclick = () => { window._pago = p; document.querySelectorAll('.pago-btn-ref').forEach(x => x.classList.remove('selected')); b.classList.add('selected'); document.getElementById('pago-display').textContent = p; };
+    g.appendChild(b);
+  });
+})();
+
+// Render carga rápida
+(function() {
+  const g = document.getElementById('quick-grid');
+  RAPIDOS.forEach(n => {
+    const b = document.createElement('button'); b.className = 'quick-btn'; b.textContent = n;
+    b.onclick = () => addItemDesde(n); g.appendChild(b);
+  });
+})();
+
+// Buscador
+let searchTimer = null;
+const searchInp  = document.getElementById('search-input');
+const searchDrop = document.getElementById('search-drop');
+
+searchInp.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => doSearch(searchInp.value.trim()), 130);
+});
+searchInp.addEventListener('focus', () => { if (searchInp.value.trim().length >= 2) doSearch(searchInp.value.trim()); });
+document.addEventListener('click', e => { if (!document.getElementById('search-wrap').contains(e.target)) searchDrop.style.display = 'none'; });
+
+function doSearch(q) {
+  if (q.length < 2) { searchDrop.style.display = 'none'; return; }
+  const words = q.toUpperCase().split(/\s+/).filter(Boolean);
+  const matches = CATALOGO.filter(p => words.every(w => p.includes(w))).slice(0, 30);
+  searchDrop.innerHTML = matches.length
+    ? matches.map(p => {
+        let h = p;
+        words.forEach(w => { const re = new RegExp(w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi'); h = h.replace(re, m => '<mark>' + m + '</mark>'); });
+        return '<div class="search-item" onclick="selectFromSearch(\'' + p.replace(/'/g,"\\'") + '\')">' + h + '</div>';
+      }).join('')
+    : '<div class="search-empty">Sin resultados</div>';
+  searchDrop.style.display = 'block';
+}
+
+window.selectFromSearch = function(n) { addItemDesde(n); searchInp.value = ''; searchDrop.style.display = 'none'; };
+
+// Items
+function addItemDesde(n) {
+  const idx = window._items.findIndex(it => it.desc === n);
+  if (idx >= 0) { window._items[idx].qty++; renderItems(); return; }
+  window._items.push({ desc: n, precio: '', qty: 1 }); renderItems();
+  setTimeout(() => { const inp = document.querySelectorAll('.price-inp'); if (inp.length) inp[inp.length-1].focus(); }, 30);
+}
+
+window.addItem = function() {
+  window._items.push({ desc: '', precio: '', qty: 1 }); renderItems();
+  setTimeout(() => { const inp = document.querySelectorAll('.item-inp:not(.price-inp)'); if (inp.length) inp[inp.length-1].focus(); }, 30);
+};
+
+window.removeItem = function(i) { window._items.splice(i, 1); renderItems(); };
+window.changeQty  = function(i, d) { window._items[i].qty = Math.max(1, (window._items[i].qty||1) + d); renderItems(); };
+
+function renderItems() {
+  const c = document.getElementById('items-container'); c.innerHTML = '';
+  if (!window._items.length) {
+    c.innerHTML = '<p style="font-size:12px;color:#aaa;padding:5px 0">Seleccioná un producto de carga rápida, buscá en el catálogo o agregá manualmente</p>';
+    updateTotal(); return;
+  }
+  window._items.forEach((it, i) => {
+    const r = document.createElement('div'); r.className = 'row-item';
+    r.innerHTML = '<div class="qty-wrap"><button class="qty-btn" onclick="changeQty(' + i + ',-1)">−</button><span class="qty-val">' + it.qty + '</span><button class="qty-btn" onclick="changeQty(' + i + ',1)">+</button></div>'
+      + '<input class="item-inp" type="text" placeholder="Descripción" value="' + it.desc.replace(/"/g,'&quot;') + '" oninput="window._items[' + i + '].desc=this.value"/>'
+      + '<input class="item-inp price-inp" type="number" placeholder="$ c/u" value="' + it.precio + '" oninput="window._items[' + i + '].precio=this.value;updateTotal()" min="0" step="0.01"/>'
+      + '<button class="btn-remove" onclick="removeItem(' + i + ')" aria-label="Quitar">✕</button>';
+    c.appendChild(r);
+  });
+  updateTotal();
+}
+
+function updateTotal() {
+  const t = window._items.reduce((s, it) => s + (parseFloat(it.precio)||0) * (it.qty||1), 0);
+  document.getElementById('total-display').textContent = '$' + t.toLocaleString('es-AR', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+
+window.enviarACaja = window.enviarACajaFB;
+
+// Badge
+window.updateBadge = function(n) {
+  const b = document.getElementById('badge-caja');
+  b.textContent = n; b.style.display = n > 0 ? 'inline' : 'none';
+};
+
+// Tabs
+window.switchTab = function(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+};
+
+window.switchCajaTab = function(tab) {
+  document.getElementById('caja-pendientes').style.display = tab === 'pendientes' ? 'block' : 'none';
+  document.getElementById('caja-historial').style.display  = tab === 'historial'  ? 'block' : 'none';
+  document.getElementById('ctab-pendientes').classList.toggle('active', tab === 'pendientes');
+  document.getElementById('ctab-historial').classList.toggle('active', tab === 'historial');
+};
+
+// Toast
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+window.showToast = showToast;
+
+// Init
+renderItems();
+document.getElementById('caja-pendientes').innerHTML = '<div class="loading">Conectando a Firebase...</div>';
+</script>
+
+</body>
+</html>
